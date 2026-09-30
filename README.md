@@ -20,6 +20,8 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Version 0.3: thin brightness track with a round thumb, transparent drag mirror,
   first-swipe brightness control, unfilled editor icon frames and power menu.
   First-swipe positioning is currently tuned for this phone's portrait layout.
+- Version 0.4: edge-to-edge notification rows, no notification-stack scrim
+  panel, and unfilled notification footer buttons.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
