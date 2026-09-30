@@ -167,9 +167,6 @@ final class ClassicNotifications {
             }
         });
         Class<?> scrim=XposedHelpers.findClass("com.android.systemui.scrim.ScrimView",loader);
-        XposedBridge.hookAllMethods(scrim,"enableBottomEdgeConcave",new XC_MethodHook(){
-            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=false;}
-        });
         XposedBridge.hookAllMethods(scrim,"setCornerRadius",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0;}
         });
