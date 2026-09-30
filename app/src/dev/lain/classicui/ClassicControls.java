@@ -90,6 +90,21 @@ final class ClassicControls {
         if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++){View found=launchableGroup(g.getChildAt(i),type);if(found!=null)return found;}}
         return null;
     }
+    private static void quickBrightnessVisibility(Object qs){
+        if(qs==null)return;
+        Object ex=XposedHelpers.getObjectField(qs,"mEx");
+        View slider=(View)XposedHelpers.getAdditionalInstanceField(ex,"classicQuickSlider");
+        if(slider==null)return;
+        View header=(View)XposedHelpers.getObjectField(qs,"mHeader");
+        float expansion=XposedHelpers.getFloatField(qs,"mLastQSExpansion");
+        boolean visible=XposedHelpers.getBooleanField(qs,"mQsVisible")
+                && !(Boolean)XposedHelpers.callMethod(qs,"isKeyguardState")
+                && header!=null && header.getVisibility()==View.VISIBLE
+                && expansion>=0 && expansion<0.01f
+                && !(Boolean)XposedHelpers.callMethod(qs,"isCustomizing");
+        slider.setVisibility(visible?View.VISIBLE:View.GONE);
+        if(visible)slider.bringToFront();
+    }
     static void install(ClassLoader loader){
         Class<?> qsEx=XposedHelpers.findClass("com.nothing.systemui.qs.QSImplEx",loader);
         XposedBridge.hookAllMethods(qsEx,"init",new XC_MethodHook(){
@@ -101,6 +116,7 @@ final class ClassicControls {
                     Object factory=XposedHelpers.getObjectField(fullController,"mBrightnessSliderControllerFactory");
                     Object slider=XposedHelpers.callMethod(factory,"create",quick.getContext(),quick);
                     View root=(View)XposedHelpers.callMethod(slider,"getRootView");
+                    root.setVisibility(View.GONE);
                     ViewGroup container=(ViewGroup)h.args[3];
                     android.widget.FrameLayout.LayoutParams params=new android.widget.FrameLayout.LayoutParams(-1,dp(root,48));
                     params.topMargin=dp(root,265);params.leftMargin=dp(root,16);params.rightMargin=dp(root,16);
@@ -119,8 +135,8 @@ final class ClassicControls {
         });
         XposedBridge.hookAllMethods(qsEx,"onQSExpansionChangedForAnimation",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
-                View v=(View)XposedHelpers.getAdditionalInstanceField(h.thisObject,"classicQuickSlider");
-                if(v!=null){v.setVisibility((Float)h.args[0]<0.01f && !(Boolean)h.args[4]?View.VISIBLE:View.GONE);v.bringToFront();}
+                try{quickBrightnessVisibility(XposedHelpers.callMethod(h.thisObject,"getQSImpl"));}
+                catch(Throwable e){XposedBridge.log(e);}
             }
         });
         Class<?> qsContainer=XposedHelpers.findClass("com.android.systemui.qs.QSContainerImpl",loader);
@@ -133,6 +149,12 @@ final class ClassicControls {
         // Legacy notification positioning reads QSImpl directly, bypassing the
         // container's QQS getters. Reserve the same slider space in that contract.
         Class<?> qs=XposedHelpers.findClass("com.android.systemui.qs.QSImpl",loader);
+        for(String method:new String[]{"updateQsState","setQsExpansion","setQsVisible"})
+            XposedBridge.hookAllMethods(qs,method,new XC_MethodHook(){
+                @Override protected void afterHookedMethod(MethodHookParam h){
+                    try{quickBrightnessVisibility(h.thisObject);}catch(Throwable e){XposedBridge.log(e);}
+                }
+            });
         XposedBridge.hookAllMethods(qs,"getQsMinExpansionHeight",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
                 if(XposedHelpers.getBooleanField(h.thisObject,"mInSplitShade"))return;
