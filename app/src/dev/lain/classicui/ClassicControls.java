@@ -97,8 +97,11 @@ final class ClassicControls {
         if(slider==null)return;
         View header=(View)XposedHelpers.getObjectField(qs,"mHeader");
         float expansion=XposedHelpers.getFloatField(qs,"mLastQSExpansion");
+        boolean keyguard=(Boolean)XposedHelpers.callMethod(qs,"isKeyguardState");
+        View container=(View)XposedHelpers.getObjectField(qs,"mContainer");
+        if(container!=null)container.setBackgroundColor(keyguard?0:ClassicTheme.panel(container));
         boolean visible=XposedHelpers.getBooleanField(qs,"mQsVisible")
-                && !(Boolean)XposedHelpers.callMethod(qs,"isKeyguardState")
+                && !keyguard
                 && header!=null && header.getVisibility()==View.VISIBLE
                 && expansion>=0 && expansion<0.01f
                 && !(Boolean)XposedHelpers.callMethod(qs,"isCustomizing");

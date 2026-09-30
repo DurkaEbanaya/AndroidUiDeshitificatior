@@ -162,7 +162,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             });
             XC_MethodHook panelTheme=new XC_MethodHook(){
                 @Override protected void afterHookedMethod(MethodHookParam h){
-                    View v=(View)h.thisObject;v.setBackgroundColor(ClassicTheme.panel(v));
+                    View v=(View)h.thisObject;applyPanelTheme(v);
                 }
             };
             Class<?> container=XposedHelpers.findClass("com.android.systemui.qs.QSContainerImpl",p.classLoader);
@@ -171,7 +171,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             XposedHelpers.findAndHookMethod(View.class,"onConfigurationChanged",android.content.res.Configuration.class,new XC_MethodHook(){
                 @Override protected void afterHookedMethod(MethodHookParam h){
                     if(container.isInstance(h.thisObject)) {
-                        View v=(View)h.thisObject;v.setBackgroundColor(ClassicTheme.panel(v));
+                        View v=(View)h.thisObject;applyPanelTheme(v);
                     }
                 }
             });
@@ -180,6 +180,10 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             });
             XposedBridge.log("ClassicUI: SystemUI hooks ready");
         }
+    }
+    static void applyPanelTheme(View v){
+        android.app.KeyguardManager keyguard=v.getContext().getSystemService(android.app.KeyguardManager.class);
+        v.setBackgroundColor(keyguard!=null && keyguard.isKeyguardLocked()?0:ClassicTheme.panel(v));
     }
     private static void collapse(View v) {
         if(v.getClass().getName().equals("com.google.android.material.appbar.AppBarLayout")) {
