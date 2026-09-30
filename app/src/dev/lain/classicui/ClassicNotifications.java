@@ -6,7 +6,33 @@ import de.robv.android.xposed.*;
 
 final class ClassicNotifications {
     static void install(ClassLoader loader) {
+        Class<?> background=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.NotificationBackgroundView",loader);
+        XposedBridge.hookAllMethods(background,"setRadius",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;h.args[1]=0f;}
+        });
+        Class<?> outline=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.ExpandableOutlineView",loader);
+        XposedBridge.hookAllMethods(outline,"initDimens",new XC_MethodHook(){
+            @Override protected void afterHookedMethod(MethodHookParam h){
+                XposedHelpers.setFloatField(XposedHelpers.callMethod(h.thisObject,"getRoundableState"),"maxRadius",0f);
+            }
+        });
         Class<?> stack=XposedHelpers.findClass("com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout",loader);
+        XposedBridge.hookAllMethods(stack,"getScrimTopPaddingOrZero",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.setResult(0);}
+        });
+        XposedBridge.hookAllMethods(stack,"setRoundedClippingBounds",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[4]=0;h.args[5]=0;}
+        });
+        Class<?> window=XposedHelpers.findClass("com.android.systemui.shade.NotificationShadeWindowControllerImpl",loader);
+        XposedBridge.hookAllMethods(window,"applyWindowLayoutParams",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){
+                Object state=XposedHelpers.getObjectField(h.thisObject,"mCurrentState");
+                boolean visible=XposedHelpers.getBooleanField(state,"panelVisible") && !XposedHelpers.getBooleanField(state,"dozing");
+                android.view.WindowManager.LayoutParams lp=(android.view.WindowManager.LayoutParams)XposedHelpers.getObjectField(h.thisObject,"mLpChanged");
+                lp.setBlurBehindRadius(visible?80:0);
+                if(visible)lp.flags|=4;else lp.flags&=~4;
+            }
+        });
         XposedBridge.hookAllMethods(stack,"updateSidePadding",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
                 XposedHelpers.setIntField(h.thisObject,"mSidePaddings",0);
