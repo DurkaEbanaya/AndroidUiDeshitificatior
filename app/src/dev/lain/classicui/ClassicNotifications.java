@@ -58,6 +58,10 @@ final class ClassicNotifications {
             }
         });
         Class<?> stack=XposedHelpers.findClass("com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout",loader);
+        Class<?> algorithm=XposedHelpers.findClass("com.android.systemui.statusbar.notification.stack.StackScrollAlgorithm",loader);
+        XposedBridge.hookAllMethods(algorithm,"getScrimTopPaddingOrZero",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.setResult(0f);}
+        });
         XposedBridge.hookAllMethods(stack,"getScrimTopPaddingOrZero",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){h.setResult(0);}
         });
