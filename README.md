@@ -25,6 +25,10 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Version 0.4.2: flatten the actual notification drawable as well as its
   clipping outline. Open **Nothing Classic UI** from the launcher to adjust
   shade blur from 0–400 px (default 160); close and reopen the shade to apply.
+- Version 0.4.3: flatten Nothing's separate notification section background.
+  When native window blur is disabled by firmware, render a blurred copy of
+  the static wallpaper behind the shade. This fallback blurs wallpaper,
+  rather than the live contents of the underlying application.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
