@@ -33,10 +33,19 @@ public final class ClassicUi implements IXposedHookLoadPackage {
     private static void compact(View v, boolean root) {
         square(v.getBackground());
         if(root) {
-            v.setMinimumHeight(dp(v,52));
-            v.setPaddingRelative(dp(v,16),dp(v,4),dp(v,16),dp(v,4));
-            // Flat list surface; retain the native ripple/mask and click target.
-            clearCard(v.getBackground());
+            boolean titled=v.findViewById(android.R.id.title)!=null;
+            boolean spacer=v instanceof ViewGroup && ((ViewGroup)v).getChildCount()==0;
+            if(!titled && !spacer)return;
+            v.setMinimumHeight(titled?dp(v,48):0);
+            v.setPaddingRelative(dp(v,16),titled?dp(v,2):0,dp(v,16),titled?dp(v,2):0);
+            ViewGroup.LayoutParams params=v.getLayoutParams();
+            if(params!=null){params.height=titled?-2:dp(v,4);
+                if(params instanceof ViewGroup.MarginLayoutParams){ViewGroup.MarginLayoutParams m=(ViewGroup.MarginLayoutParams)params;m.topMargin=0;m.bottomMargin=0;}
+                v.setLayoutParams(params);
+            }
+            v.setBackground(titled?new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(ClassicTheme.dark(v)?0x22ffffff:0x22000000),null,
+                    new android.graphics.drawable.ColorDrawable(0xffffffff)):null);
         }
         if(v instanceof TextView){
             TextView text=(TextView)v;
@@ -59,7 +68,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             ViewGroup g=(ViewGroup)v;
             String name="";
             try { name=v.getResources().getResourceEntryName(v.getId()); } catch(Exception ignored){}
-            if(name.equals("text_frame")) v.setPaddingRelative(dp(v,12),dp(v,4),dp(v,8),dp(v,4));
+            if(name.equals("text_frame")) {v.setMinimumHeight(0);v.setPaddingRelative(dp(v,12),0,dp(v,8),0);}
             if(name.equals("icon_frame")) {
                 v.setMinimumHeight(0); v.setMinimumWidth(0); v.setPadding(0,0,0,0);
             }
@@ -84,7 +93,8 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             settingsHooked=true;
             XC_MethodHook bind = new XC_MethodHook() {
                 @Override protected void afterHookedMethod(MethodHookParam h) {
-                    try { compact(holderView(h.args[0]),true); } catch(Throwable e){XposedBridge.log(e);}
+                    try { compact(holderView(h.args[0]),true);
+                    } catch(Throwable e){XposedBridge.log(e);}
                 }
             };
             XposedBridge.hookAllMethods(pref,"m0",bind);
