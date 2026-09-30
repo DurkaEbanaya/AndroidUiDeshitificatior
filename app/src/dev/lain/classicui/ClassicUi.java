@@ -96,6 +96,10 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     View v=(View)h.thisObject;
                     String name="";try{name=v.getResources().getResourceEntryName(v.getId());}catch(Exception ignored){}
+                    if(name.equals("container_material") || name.equals("homepage_container")
+                            || name.equals("main_content") || v.getId()==android.R.id.content){
+                        if(v.getBackground()!=null)v.setBackground(null);
+                    }
                     if(name.equals("recycler_view")){
                         for(View node=v;node!=null;node=node.getParent() instanceof View?(View)node.getParent():null){
                             if(node.getClass().getName().equals("com.android.internal.policy.DecorView"))break;
@@ -122,7 +126,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                     android.app.Activity a=(android.app.Activity)h.thisObject;
                     View decor=a.getWindow().getDecorView();
                     a.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
-                            ClassicTheme.dark(decor)?0xff202020:0xfffafafa));
+                            ClassicTheme.dark(decor)?0xff000000:0xfffafafa));
                     decor.post(()->collapse(decor));
                 }
             });
