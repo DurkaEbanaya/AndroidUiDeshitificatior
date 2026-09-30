@@ -15,7 +15,6 @@ import android.widget.TextView;
 import de.robv.android.xposed.*;
 
 final class ClassicControls {
-    private static final int ACCENT=0xff8ab4f8, TEXT=0xffbdc1c6;
     private static int dp(View v,int n){return Math.round(n*v.getResources().getDisplayMetrics().density);}
     private static View named(View v,String name){
         int id=v.getResources().getIdentifier(name,"id","com.android.systemui");
@@ -23,13 +22,13 @@ final class ClassicControls {
     }
     private static final class Track extends Drawable {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final float thickness;
-        Track(float thickness){this.thickness=thickness;}
+        private final float thickness;private final View owner;
+        Track(View owner,float thickness){this.owner=owner;this.thickness=thickness;}
         @Override public void draw(Canvas c){
             Rect b=getBounds();float y=b.exactCenterY();
             paint.setStrokeWidth(thickness);paint.setColor(0xff62666c);
             c.drawLine(b.left,y,b.right,y,paint);
-            paint.setColor(ACCENT);
+            paint.setColor(ClassicTheme.accent(owner));
             c.drawLine(b.left,y,b.left+b.width()*getLevel()/10000f,y,paint);
         }
         @Override protected boolean onLevelChange(int level){invalidateSelf();return true;}
@@ -38,9 +37,9 @@ final class ClassicControls {
         @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
     }
     private static final class Thumb extends Drawable {
-        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int size;
-        Thumb(int size){this.size=size;paint.setColor(ACCENT);}
-        @Override public void draw(Canvas c){Rect b=getBounds();c.drawCircle(b.exactCenterX(),b.exactCenterY(),size/2f,paint);}
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private final int size;private final View owner;
+        Thumb(View owner,int size){this.owner=owner;this.size=size;}
+        @Override public void draw(Canvas c){paint.setColor(ClassicTheme.accent(owner));Rect b=getBounds();c.drawCircle(b.exactCenterX(),b.exactCenterY(),size/2f,paint);}
         @Override public int getIntrinsicWidth(){return size;}
         @Override public int getIntrinsicHeight(){return size;}
         @Override public void setAlpha(int a){paint.setAlpha(a);}
@@ -51,14 +50,14 @@ final class ClassicControls {
         View v=(View)object;SeekBar bar=(SeekBar)XposedHelpers.getObjectField(v,"mSlider");
         if(bar==null)return;
         bar.setProgressTintList(null);bar.setProgressBackgroundTintList(null);bar.setThumbTintList(null);
-        bar.setProgressDrawable(new Track(dp(v,2)));
-        bar.setThumb(new Thumb(dp(v,16)));bar.setThumbOffset(dp(v,8));bar.setSplitTrack(false);
+        bar.setProgressDrawable(new Track(v,dp(v,2)));
+        bar.setThumb(new Thumb(v,dp(v,16)));bar.setThumbOffset(dp(v,8));bar.setSplitTrack(false);
         bar.setBackground(null);bar.setPadding(dp(v,12),0,dp(v,12),0);
         // Keep the native 48dp touch target and controller; only the drawing is thin.
         View button=named(v,"autoBrightness");
         if(button instanceof ImageView){
             ((ImageView)button).setImageResource(android.R.drawable.ic_menu_day);
-            ((ImageView)button).setImageTintList(ColorStateList.valueOf(TEXT));
+            ((ImageView)button).setImageTintList(ColorStateList.valueOf(ClassicTheme.text(v)));
         }
     }
     private static void editor(Object object){
@@ -66,15 +65,15 @@ final class ClassicControls {
         View frame=(View)XposedHelpers.getObjectField(v,"vIconFrame");frame.setBackground(null);
         ((Paint)XposedHelpers.getObjectField(frame,"bgPaint")).setAlpha(0);
         ImageView icon=(ImageView)XposedHelpers.getObjectField(v,"vIcon");
-        icon.setImageTintList(ColorStateList.valueOf(TEXT));
-        TextView label=(TextView)XposedHelpers.getObjectField(v,"tvLabel");label.setTextSize(12);label.setTextColor(TEXT);
+        icon.setImageTintList(ColorStateList.valueOf(ClassicTheme.text(v)));
+        TextView label=(TextView)XposedHelpers.getObjectField(v,"tvLabel");label.setTextSize(12);label.setTextColor(ClassicTheme.text(v));
     }
     private static void power(View v){
         v.setBackground(null);v.setBackgroundTintList(null);
         v.setStateListAnimator(null);v.setElevation(0);v.setOutlineProvider(null);v.setClipToOutline(false);
         if(v instanceof TextView){
             TextView text=(TextView)v;
-            text.setTextColor(TEXT);
+            text.setTextColor(ClassicTheme.text(v));
             if(v.getId()==android.R.id.message){
                 text.setSingleLine(false);text.setMaxLines(2);text.setEllipsize(null);
                 text.setGravity(android.view.Gravity.CENTER);text.setTextSize(14);
@@ -83,7 +82,7 @@ final class ClassicControls {
                 if(params!=null){params.width=ViewGroup.LayoutParams.MATCH_PARENT;params.height=ViewGroup.LayoutParams.WRAP_CONTENT;text.setLayoutParams(params);}
             }
         }
-        if(v instanceof ImageView){((ImageView)v).setImageTintList(ColorStateList.valueOf(TEXT));v.setBackground(null);}
+        if(v instanceof ImageView){((ImageView)v).setImageTintList(ColorStateList.valueOf(ClassicTheme.text(v)));v.setBackground(null);}
         if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)power(g.getChildAt(i));}
     }
     private static View launchableGroup(View v,Class<?> type){

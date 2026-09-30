@@ -14,13 +14,6 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public final class ClassicUi implements IXposedHookLoadPackage {
     private static boolean systemUiHooked;
     private static boolean settingsHooked;
-    private static final int PANEL = 0xff202124;
-    private static final int ACTIVE = 0xff8ab4f8;
-    private static final int INACTIVE = 0xffbdc1c6;
-    private static final int UNAVAILABLE = 0xff666a70;
-    private static int stateColor(int state) {
-        return state == 2 ? ACTIVE : state == 0 ? UNAVAILABLE : INACTIVE;
-    }
     private static int dp(View v, int n) { return Math.round(n * v.getResources().getDisplayMetrics().density); }
     private static void square(Drawable d) {
         if (d instanceof GradientDrawable) ((GradientDrawable)d.mutate()).setCornerRadius(0);
@@ -82,6 +75,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             systemUiHooked=true;
             ClassicControls.install(p.classLoader);
             ClassicNotifications.install(p.classLoader);
+            ClassicStatusBar.install(p.classLoader);
             XposedBridge.hookAllMethods(XposedHelpers.findClass("com.nothing.systemui.qs.QSPanelControllerBaseEx",p.classLoader),"createTileView",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     String spec=(String)h.args[3];
@@ -107,13 +101,17 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                         box.setVisibility(View.VISIBLE);box.setGravity(android.view.Gravity.CENTER);
                         TextView label=(TextView)XposedHelpers.getObjectField(v,"label");
                         label.setGravity(android.view.Gravity.CENTER);label.setTextSize(12);label.setMaxLines(1);
-                        label.setTextColor(stateColor(XposedHelpers.getIntField(v,"lastState")));
+                        label.setTextColor(ClassicTheme.state(v,XposedHelpers.getIntField(v,"lastState")));
                         ((View)XposedHelpers.getObjectField(v,"secondaryLabel")).setVisibility(View.GONE);
                     }catch(Throwable e){XposedBridge.log(e);}
                 }
             };
             XposedBridge.hookAllMethods(tile,"updateLayout",labels);
             XposedBridge.hookAllMethods(tile,"handleStateChanged",labels);
+            // Configuration updates replace the drawable and reset text/margins even
+            // when no tile state or layout-direction change occurs.
+            XposedBridge.hookAllMethods(tile,"updateResources",labels);
+            XposedBridge.hookAllMethods(tile,"onConfigurationChanged",labels);
             for(String method:new String[]{"setColor","setOverlayColor"}) {
                 XposedBridge.hookAllMethods(tile,method,new XC_MethodHook(){
                     @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0;}
@@ -121,19 +119,29 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             }
             XposedBridge.hookAllMethods(tile,"setLabelColor",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
-                    h.args[0]=stateColor(XposedHelpers.getIntField(h.thisObject,"lastState"));
+                    h.args[0]=ClassicTheme.state((View)h.thisObject,XposedHelpers.getIntField(h.thisObject,"lastState"));
                 }
             });
             Class<?> icon=XposedHelpers.findClass("com.android.systemui.qs.tileimpl.QSIconViewImpl",p.classLoader);
             XposedBridge.hookAllMethods(icon,"getColor",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     int state=h.args[0] instanceof Integer ? (Integer)h.args[0] : XposedHelpers.getIntField(h.args[0],"state");
-                    h.setResult(stateColor(state));
+                    h.setResult(ClassicTheme.state((View)h.thisObject,state));
                 }
             });
-            XposedBridge.hookAllMethods(XposedHelpers.findClass("com.android.systemui.qs.QSContainerImpl",p.classLoader),"onAttachedToWindow",new XC_MethodHook(){
+            XC_MethodHook panelTheme=new XC_MethodHook(){
                 @Override protected void afterHookedMethod(MethodHookParam h){
-                    ((View)h.thisObject).setBackgroundColor(PANEL);
+                    View v=(View)h.thisObject;v.setBackgroundColor(ClassicTheme.panel(v));
+                }
+            };
+            Class<?> container=XposedHelpers.findClass("com.android.systemui.qs.QSContainerImpl",p.classLoader);
+            XposedBridge.hookAllMethods(container,"onAttachedToWindow",panelTheme);
+            XposedBridge.hookAllMethods(container,"updateResources",panelTheme);
+            XposedHelpers.findAndHookMethod(View.class,"onConfigurationChanged",android.content.res.Configuration.class,new XC_MethodHook(){
+                @Override protected void afterHookedMethod(MethodHookParam h){
+                    if(container.isInstance(h.thisObject)) {
+                        View v=(View)h.thisObject;v.setBackgroundColor(ClassicTheme.panel(v));
+                    }
                 }
             });
             XposedBridge.hookAllMethods(tile,"changeCornerRadius",new XC_MethodHook(){
