@@ -15,6 +15,15 @@ final class ClassicNotifications {
         if(d instanceof android.graphics.drawable.DrawableWrapper)flatten(((android.graphics.drawable.DrawableWrapper)d).getDrawable());
     }
     static void install(ClassLoader loader) {
+        // Header wrappers and grouped rows create their own RoundableState,
+        // independently of ExpandableOutlineView.initDimens.
+        Class<?> roundable=XposedHelpers.findClass("com.android.systemui.statusbar.notification.RoundableState",loader);
+        XposedBridge.hookAllConstructors(roundable,new XC_MethodHook(){
+            @Override protected void afterHookedMethod(MethodHookParam h){XposedHelpers.setFloatField(h.thisObject,"maxRadius",0f);}
+        });
+        XposedBridge.hookAllMethods(roundable,"setMaxRadius",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;}
+        });
         Class<?> section=XposedHelpers.findClass("com.nothing.systemui.statusbar.notification.stack.SectionHeaderViewWithBackground",loader);
         XposedBridge.hookAllConstructors(section,new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"drawable"));}
