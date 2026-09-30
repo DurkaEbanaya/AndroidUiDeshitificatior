@@ -15,6 +15,10 @@ final class ClassicNotifications {
         if(d instanceof android.graphics.drawable.DrawableWrapper)flatten(((android.graphics.drawable.DrawableWrapper)d).getDrawable());
     }
     static void install(ClassLoader loader) {
+        Class<?> qsContainer=XposedHelpers.findClass("com.android.systemui.qs.QSContainerImpl",loader);
+        XposedBridge.hookAllMethods(qsContainer,"setFancyClipping",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[4]=0;}
+        });
         // Header wrappers and grouped rows create their own RoundableState,
         // independently of ExpandableOutlineView.initDimens.
         Class<?> roundable=XposedHelpers.findClass("com.android.systemui.statusbar.notification.RoundableState",loader);
@@ -163,6 +167,15 @@ final class ClassicNotifications {
             }
         });
         Class<?> scrim=XposedHelpers.findClass("com.android.systemui.scrim.ScrimView",loader);
+        XposedBridge.hookAllMethods(scrim,"enableBottomEdgeConcave",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=false;}
+        });
+        XposedBridge.hookAllMethods(scrim,"setCornerRadius",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0;}
+        });
+        XposedBridge.hookAllMethods(scrim,"setBottomEdgeRadius",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;}
+        });
         XposedBridge.hookAllMethods(scrim,"onDraw",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){
                 View v=(View)h.thisObject;
