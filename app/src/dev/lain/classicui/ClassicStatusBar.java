@@ -19,6 +19,8 @@ final class ClassicStatusBar {
         @Override public void draw(Canvas c){
             Rect b=getBounds();float u=Math.min(b.width(),b.height())/24f;
             float x=b.exactCenterX(),y=b.exactCenterY()+8*u;
+            int save=c.save();
+            c.rotate(-45,b.exactCenterX(),b.exactCenterY());
             paint.setStrokeWidth(1.5f*u);paint.setStrokeCap(Paint.Cap.BUTT);
             int alpha=paint.getAlpha();
             paint.setStyle(Paint.Style.FILL);c.drawCircle(x,y,1.15f*u,paint);
@@ -28,6 +30,7 @@ final class ClassicStatusBar {
                 c.drawArc(x-r,y-r,x+r,y+r,225,90,false,paint);
             }
             paint.setAlpha(alpha);
+            c.restoreToCount(save);
             if(noInternet){
                 float ex=b.right-2*u;
                 c.drawLine(ex,y-7*u,ex,y-3*u,paint);

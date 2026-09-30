@@ -35,6 +35,25 @@ public final class ClassicUi implements IXposedHookLoadPackage {
         if(root) {
             v.setMinimumHeight(dp(v,52));
             v.setPaddingRelative(dp(v,16),dp(v,4),dp(v,16),dp(v,4));
+            // Flat list surface; retain the native ripple/mask and click target.
+            clearCard(v.getBackground());
+        }
+        if(v instanceof TextView){
+            TextView text=(TextView)v;
+            if(v.getId()==android.R.id.title){
+                text.setTypeface(android.graphics.Typeface.create("sans-serif",0));
+                text.setTextSize(18);
+                text.setTextColor(ClassicTheme.dark(v)?0xffeeeeee:0xff202020);
+            }else if(v.getId()==android.R.id.summary){
+                text.setTypeface(android.graphics.Typeface.create("sans-serif",0));
+                text.setTextSize(14);
+                text.setTextColor(ClassicTheme.dark(v)?0xffaaaaaa:0xff606060);
+            }
+        }
+        if(v instanceof android.widget.ImageView && v.getId()==android.R.id.icon){
+            ((android.widget.ImageView)v).setImageTintList(android.content.res.ColorStateList.valueOf(
+                    ClassicTheme.dark(v)?0xff87939f:0xff606d79));
+            clearCard(v.getBackground());
         }
         if(v instanceof ViewGroup) {
             ViewGroup g=(ViewGroup)v;
@@ -45,6 +64,16 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                 v.setMinimumHeight(0); v.setMinimumWidth(0); v.setPadding(0,0,0,0);
             }
             for(int i=0;i<g.getChildCount();i++)compact(g.getChildAt(i),false);
+        }
+    }
+    private static void clearCard(Drawable d){
+        if(d instanceof GradientDrawable){
+            GradientDrawable g=(GradientDrawable)d.mutate();g.setColor(0);g.setCornerRadius(0);g.setStroke(0,0);
+        }else if(d instanceof LayerDrawable){
+            LayerDrawable layers=(LayerDrawable)d;
+            for(int i=0;i<layers.getNumberOfLayers();i++)clearCard(layers.getDrawable(i));
+        }else if(d instanceof android.graphics.drawable.DrawableWrapper){
+            clearCard(((android.graphics.drawable.DrawableWrapper)d).getDrawable());
         }
     }
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam p) throws Throwable {
@@ -64,6 +93,8 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                 @Override protected void afterHookedMethod(MethodHookParam h){
                     android.app.Activity a=(android.app.Activity)h.thisObject;
                     View decor=a.getWindow().getDecorView();
+                    a.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                            ClassicTheme.dark(decor)?0xff202020:0xfffafafa));
                     decor.post(()->collapse(decor));
                 }
             });
