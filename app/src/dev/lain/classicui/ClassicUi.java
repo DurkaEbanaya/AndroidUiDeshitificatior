@@ -96,6 +96,13 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     View v=(View)h.thisObject;
                     String name="";try{name=v.getResources().getResourceEntryName(v.getId());}catch(Exception ignored){}
+                    if(name.equals("app_bar") || name.equals("app_bar_container")
+                            || name.equals("homepage_app_bar_regular_phone_view")
+                            || name.equals("homepage_app_bar_two_pane_view")){
+                        if(v.getBackground()!=null)v.setBackground(null);
+                        v.setElevation(0);
+                        v.setStateListAnimator(null);
+                    }
                     if(name.equals("container_material") || name.equals("homepage_container")
                             || name.equals("main_content") || v.getId()==android.R.id.content){
                         if(v.getBackground()!=null)v.setBackground(null);
