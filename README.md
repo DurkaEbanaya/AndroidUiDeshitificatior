@@ -29,6 +29,9 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
   When native window blur is disabled by firmware, render a blurred copy of
   the static wallpaper behind the shade. This fallback blurs wallpaper,
   rather than the live contents of the underlying application.
+- Version 0.4.7: blur strength is displayed as 0–100%, mapped quadratically
+  to 0–80 px for finer low-strength control. The wallpaper ID is checked
+  on shade opening; a changed wallpaper refreshes the copied backdrop.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 

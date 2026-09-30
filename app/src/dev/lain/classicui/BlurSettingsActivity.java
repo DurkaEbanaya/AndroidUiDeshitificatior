@@ -15,10 +15,10 @@ public final class BlurSettingsActivity extends Activity {
         TextView value=new TextView(this);value.setTextSize(18);layout.addView(value);
         SeekBar slider=new SeekBar(this);slider.setMax(400);
         slider.setProgress(getSharedPreferences("ui",0).getInt("blur",160));
-        value.setText(slider.getProgress()+" px");layout.addView(slider,new LinearLayout.LayoutParams(-1,pad*3));
+        value.setText(Math.round(slider.getProgress()/4f)+" %");layout.addView(slider,new LinearLayout.LayoutParams(-1,pad*3));
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
             public void onProgressChanged(SeekBar s,int progress,boolean user){
-                value.setText(progress+" px");
+                value.setText(Math.round(progress/4f)+" %");
                 if(user)getSharedPreferences("ui",0).edit().putInt("blur",progress).apply();
             }
             public void onStartTrackingTouch(SeekBar s){}

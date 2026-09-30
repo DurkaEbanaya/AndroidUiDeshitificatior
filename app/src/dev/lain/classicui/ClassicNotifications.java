@@ -7,6 +7,12 @@ import de.robv.android.xposed.*;
 final class ClassicNotifications {
     private static int blurRadius=160;
     private static long blurReadAt;
+    private static boolean shadeWasVisible;
+    // Keep the saved slider range, but give low strengths much finer control.
+    private static int effectRadius(int strength){
+        float fraction=strength/400f;
+        return strength==0?0:Math.max(1,Math.round(80*fraction*fraction));
+    }
     private static void flatten(android.graphics.drawable.Drawable d){
         if(d instanceof android.graphics.drawable.GradientDrawable){
             android.graphics.drawable.GradientDrawable g=(android.graphics.drawable.GradientDrawable)d.mutate();g.setCornerRadii(null);g.setCornerRadius(0);
@@ -71,31 +77,41 @@ final class ClassicNotifications {
                         if(c!=null && c.moveToFirst())blurRadius=Math.max(0,Math.min(400,c.getInt(0)));
                     }catch(Exception ignored){}
                 }
+                int radiusValue=effectRadius(blurRadius);
                 android.widget.ImageView backdrop=(android.widget.ImageView)XposedHelpers.getAdditionalInstanceField(root,"classicWallpaperBackdrop");
-                if(backdrop==null && visible && root instanceof ViewGroup){
+                if(visible && (!shadeWasVisible || backdrop==null) && root instanceof ViewGroup){
                     try{
                         android.app.WallpaperManager manager=android.app.WallpaperManager.getInstance(root.getContext());
+                        int wallpaperId=manager.getWallpaperId(android.app.WallpaperManager.FLAG_SYSTEM);
+                        Object cachedId=XposedHelpers.getAdditionalInstanceField(root,"classicWallpaperId");
+                        if(backdrop==null || !(cachedId instanceof Integer) || (Integer)cachedId!=wallpaperId){
+                        manager.forgetLoadedWallpaper();
                         android.graphics.drawable.Drawable drawable=manager.getDrawable();
                         if(drawable instanceof android.graphics.drawable.BitmapDrawable){
                             android.graphics.Bitmap original=((android.graphics.drawable.BitmapDrawable)drawable).getBitmap();
                             drawable=new android.graphics.drawable.BitmapDrawable(root.getResources(),original.copy(android.graphics.Bitmap.Config.ARGB_8888,false));
                         }
                         if(drawable!=null){
+                            if(backdrop==null){
                             backdrop=new android.widget.ImageView(root.getContext());
                             backdrop.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
-                            backdrop.setImageDrawable(drawable);
                             backdrop.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                             ((ViewGroup)root).addView(backdrop,0,new ViewGroup.LayoutParams(-1,-1));
                             XposedHelpers.setAdditionalInstanceField(root,"classicWallpaperBackdrop",backdrop);
+                            }
+                            backdrop.setImageDrawable(drawable);
+                            XposedHelpers.setAdditionalInstanceField(root,"classicWallpaperId",wallpaperId);
+                        }
                         }
                     }catch(Exception e){XposedBridge.log(e);}
                 }
+                shadeWasVisible=visible;
                 if(backdrop!=null){
                     backdrop.setVisibility(visible && blurRadius>0?View.VISIBLE:View.GONE);
                     Object old=XposedHelpers.getAdditionalInstanceField(backdrop,"radius");
-                    if(!(old instanceof Integer)||(Integer)old!=blurRadius){
-                        backdrop.setRenderEffect(blurRadius>0?android.graphics.RenderEffect.createBlurEffect(blurRadius,blurRadius,android.graphics.Shader.TileMode.CLAMP):null);
-                        XposedHelpers.setAdditionalInstanceField(backdrop,"radius",blurRadius);
+                    if(!(old instanceof Integer)||(Integer)old!=radiusValue){
+                        backdrop.setRenderEffect(radiusValue>0?android.graphics.RenderEffect.createBlurEffect(radiusValue,radiusValue,android.graphics.Shader.TileMode.CLAMP):null);
+                        XposedHelpers.setAdditionalInstanceField(backdrop,"radius",radiusValue);
                     }
                 }
                 // Nothing renders its wallpaper inside the shade window on Glimpse builds.
@@ -104,7 +120,7 @@ final class ClassicNotifications {
                 int targetId=root.getResources().getIdentifier(target,"id","com.android.systemui");
                 View wallpaper=targetId==0?null:root.findViewById(targetId);
                 if(wallpaper!=null){
-                    int radius=visible?blurRadius:0;
+                    int radius=visible?radiusValue:0;
                     Object previous=XposedHelpers.getAdditionalInstanceField(wallpaper,"classicBlurRadius");
                     if(!(previous instanceof Integer) || (Integer)previous!=radius){
                         wallpaper.setRenderEffect(radius>0?android.graphics.RenderEffect.createBlurEffect(radius,radius,android.graphics.Shader.TileMode.CLAMP):null);
@@ -113,7 +129,7 @@ final class ClassicNotifications {
                 }
                 }
                 android.view.WindowManager.LayoutParams lp=(android.view.WindowManager.LayoutParams)XposedHelpers.getObjectField(h.thisObject,"mLpChanged");
-                lp.setBlurBehindRadius(visible?blurRadius:0);
+                lp.setBlurBehindRadius(visible?radiusValue:0);
                 if(visible)lp.flags|=4;else lp.flags&=~4;
             }
             @Override protected void afterHookedMethod(MethodHookParam h){
@@ -127,7 +143,7 @@ final class ClassicNotifications {
                 if(!(Boolean)XposedHelpers.callMethod(surface,"isValid"))return;
                 Object transaction=XposedHelpers.newInstance(XposedHelpers.findClass("android.view.SurfaceControl$Transaction",loader));
                 try{
-                    XposedHelpers.callMethod(transaction,"setBackgroundBlurRadius",surface,visible?blurRadius:0);
+                    XposedHelpers.callMethod(transaction,"setBackgroundBlurRadius",surface,visible?effectRadius(blurRadius):0);
                     XposedHelpers.callMethod(transaction,"apply");
                 }finally{XposedHelpers.callMethod(transaction,"close");}
             }
@@ -138,7 +154,7 @@ final class ClassicNotifications {
             @Override protected void beforeHookedMethod(MethodHookParam h){
                 if(h.args[0]==null)return;
                 View v=(View)XposedHelpers.callMethod(h.args[0],"getView");
-                if(v!=null && v.getClass().getName().equals("com.android.systemui.shade.NotificationShadeWindowView") && v.getVisibility()==View.VISIBLE){h.args[1]=blurRadius;h.args[2]=false;}
+                if(v!=null && v.getClass().getName().equals("com.android.systemui.shade.NotificationShadeWindowView") && v.getVisibility()==View.VISIBLE){h.args[1]=effectRadius(blurRadius);h.args[2]=false;}
             }
         });
         XposedBridge.hookAllMethods(stack,"updateSidePadding",new XC_MethodHook(){
