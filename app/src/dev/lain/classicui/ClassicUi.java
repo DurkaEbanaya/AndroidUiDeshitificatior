@@ -80,6 +80,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             if(systemUiHooked)return;
             Class<?> tile=XposedHelpers.findClass("com.android.systemui.qs.tileimpl.QSTileViewImpl",p.classLoader);
             systemUiHooked=true;
+            ClassicControls.install(p.classLoader);
             XposedBridge.hookAllMethods(XposedHelpers.findClass("com.nothing.systemui.qs.QSPanelControllerBaseEx",p.classLoader),"createTileView",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     String spec=(String)h.args[3];

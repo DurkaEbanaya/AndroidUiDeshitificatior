@@ -17,6 +17,9 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
   active icons blue, inactive icons light grey, unavailable icons muted.
   Native touch/ripple handling is retained.
 - Settings preference binding reduces row padding and minimum height.
+- Version 0.3: thin brightness track with a round thumb, transparent drag mirror,
+  first-swipe brightness control, unfilled editor icon frames and power menu.
+  First-swipe positioning is currently tuned for this phone's portrait layout.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 

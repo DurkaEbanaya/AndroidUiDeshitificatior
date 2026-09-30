@@ -4,7 +4,7 @@ TOOLS=${TOOLS:-/tmp/opencode/classic-tools}
 JDK=${JDK:-$TOOLS/jdk-17.0.20.1+1}
 BT=$TOOLS/android-15
 mkdir -p build/app-classes build/app-dex
-"$JDK/bin/javac" --release 8 -cp "$TOOLS/android-36/android.jar:$TOOLS/xposed-api.jar" -d build/app-classes app/src/dev/lain/classicui/ClassicUi.java
+"$JDK/bin/javac" --release 8 -cp "$TOOLS/android-36/android.jar:$TOOLS/xposed-api.jar" -d build/app-classes app/src/dev/lain/classicui/*.java
 "$BT/d8" --lib "$TOOLS/android-36/android.jar" --classpath "$TOOLS/xposed-api.jar" --output build/app-dex build/app-classes/dev/lain/classicui/*.class
 "$BT/aapt2" compile --dir app/res -o build/resources.zip
 "$BT/aapt2" link -I "$TOOLS/android-36/android.jar" --manifest app/AndroidManifest.xml -A app/assets -o build/classic-unsigned.apk build/resources.zip
