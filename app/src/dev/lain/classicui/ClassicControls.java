@@ -103,7 +103,7 @@ final class ClassicControls {
                     View root=(View)XposedHelpers.callMethod(slider,"getRootView");
                     ViewGroup container=(ViewGroup)h.args[3];
                     android.widget.FrameLayout.LayoutParams params=new android.widget.FrameLayout.LayoutParams(-1,dp(root,48));
-                    params.topMargin=dp(root,300);params.leftMargin=dp(root,16);params.rightMargin=dp(root,16);
+                    params.topMargin=dp(root,265);params.leftMargin=dp(root,16);params.rightMargin=dp(root,16);
                     container.addView(root,params);
                     XposedHelpers.setAdditionalInstanceField(h.thisObject,"classicQuickSlider",root);
                     XposedHelpers.callMethod(slider,"init");
@@ -127,7 +127,17 @@ final class ClassicControls {
         for(String method:new String[]{"calculateContainerHeight","getQqsHeight","getSquishedQqsHeight"})XposedBridge.hookAllMethods(qsContainer,method,new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
                 float expansion=XposedHelpers.getFloatField(h.thisObject,"mQsExpansion");
-                h.setResult((Integer)h.getResult()+Math.round(dp((View)h.thisObject,90)*(1-expansion)));
+                h.setResult((Integer)h.getResult()+Math.round(dp((View)h.thisObject,55)*(1-expansion)));
+            }
+        });
+        // Legacy notification positioning reads QSImpl directly, bypassing the
+        // container's QQS getters. Reserve the same slider space in that contract.
+        Class<?> qs=XposedHelpers.findClass("com.android.systemui.qs.QSImpl",loader);
+        XposedBridge.hookAllMethods(qs,"getQsMinExpansionHeight",new XC_MethodHook(){
+            @Override protected void afterHookedMethod(MethodHookParam h){
+                if(XposedHelpers.getBooleanField(h.thisObject,"mInSplitShade"))return;
+                View header=(View)XposedHelpers.getObjectField(h.thisObject,"mHeader");
+                h.setResult((Integer)h.getResult()+dp(header,55));
             }
         });
         Class<?> quickPanel=XposedHelpers.findClass("com.android.systemui.qs.QuickQSPanel",loader);
