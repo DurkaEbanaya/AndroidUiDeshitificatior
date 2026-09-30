@@ -5,8 +5,23 @@ import android.view.ViewGroup;
 import de.robv.android.xposed.*;
 
 final class ClassicNotifications {
+    private static int blurRadius=160;
+    private static long blurReadAt;
+    private static void flatten(android.graphics.drawable.Drawable d){
+        if(d instanceof android.graphics.drawable.GradientDrawable){
+            android.graphics.drawable.GradientDrawable g=(android.graphics.drawable.GradientDrawable)d.mutate();g.setCornerRadii(null);g.setCornerRadius(0);
+        }
+        if(d instanceof android.graphics.drawable.LayerDrawable){android.graphics.drawable.LayerDrawable l=(android.graphics.drawable.LayerDrawable)d;for(int i=0;i<l.getNumberOfLayers();i++)flatten(l.getDrawable(i));}
+        if(d instanceof android.graphics.drawable.DrawableWrapper)flatten(((android.graphics.drawable.DrawableWrapper)d).getDrawable());
+    }
     static void install(ClassLoader loader) {
         Class<?> background=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.NotificationBackgroundView",loader);
+        XposedBridge.hookAllMethods(background,"setCustomBackground",new XC_MethodHook(){
+            @Override protected void afterHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground"));}
+        });
+        XposedBridge.hookAllMethods(background,"onDraw",new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground"));}
+        });
         XposedBridge.hookAllMethods(background,"setRadius",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;h.args[1]=0f;}
         });
@@ -29,7 +44,14 @@ final class ClassicNotifications {
                 Object state=XposedHelpers.getObjectField(h.thisObject,"mCurrentState");
                 boolean visible=XposedHelpers.getBooleanField(state,"panelVisible") && !XposedHelpers.getBooleanField(state,"dozing");
                 android.view.WindowManager.LayoutParams lp=(android.view.WindowManager.LayoutParams)XposedHelpers.getObjectField(h.thisObject,"mLpChanged");
-                lp.setBlurBehindRadius(visible?80:0);
+                if(visible && android.os.SystemClock.uptimeMillis()-blurReadAt>1000){
+                    blurReadAt=android.os.SystemClock.uptimeMillis();
+                    View root=(View)XposedHelpers.getObjectField(h.thisObject,"mWindowRootView");
+                    try(android.database.Cursor c=root.getContext().getContentResolver().query(android.net.Uri.parse("content://dev.lain.classicui.settings/blur"),null,null,null,null)){
+                        if(c!=null && c.moveToFirst())blurRadius=Math.max(0,Math.min(400,c.getInt(0)));
+                    }catch(Exception ignored){}
+                }
+                lp.setBlurBehindRadius(visible?blurRadius:0);
                 if(visible)lp.flags|=4;else lp.flags&=~4;
             }
         });
