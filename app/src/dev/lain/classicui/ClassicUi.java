@@ -12,6 +12,8 @@ import de.robv.android.xposed.*;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public final class ClassicUi implements IXposedHookLoadPackage {
+    private static boolean systemUiHooked;
+    private static boolean settingsHooked;
     private static final int PANEL = 0xff202124;
     private static final int ACTIVE = 0xff8ab4f8;
     private static final int INACTIVE = 0xffbdc1c6;
@@ -55,7 +57,9 @@ public final class ClassicUi implements IXposedHookLoadPackage {
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam p) throws Throwable {
         if (!p.isFirstApplication) return;
         if(p.packageName.equals("com.android.settings")) {
+            if(settingsHooked)return;
             Class<?> pref=XposedHelpers.findClass("androidx.preference.Preference",p.classLoader);
+            settingsHooked=true;
             XC_MethodHook bind = new XC_MethodHook() {
                 @Override protected void afterHookedMethod(MethodHookParam h) {
                     try { compact(holderView(h.args[0]),true); } catch(Throwable e){XposedBridge.log(e);}
@@ -73,7 +77,9 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             XposedBridge.log("ClassicUI: settings hooks ready");
         }
         if(p.packageName.equals("com.android.systemui")) {
+            if(systemUiHooked)return;
             Class<?> tile=XposedHelpers.findClass("com.android.systemui.qs.tileimpl.QSTileViewImpl",p.classLoader);
+            systemUiHooked=true;
             XposedBridge.hookAllMethods(XposedHelpers.findClass("com.nothing.systemui.qs.QSPanelControllerBaseEx",p.classLoader),"createTileView",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     String spec=(String)h.args[3];
@@ -106,7 +112,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             };
             XposedBridge.hookAllMethods(tile,"updateLayout",labels);
             XposedBridge.hookAllMethods(tile,"handleStateChanged",labels);
-            for(String method:new String[]{"setColor","setOverlayColor","setColorForUndercover"}) {
+            for(String method:new String[]{"setColor","setOverlayColor"}) {
                 XposedBridge.hookAllMethods(tile,method,new XC_MethodHook(){
                     @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0;}
                 });
