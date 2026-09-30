@@ -72,9 +72,24 @@ final class ClassicControls {
     private static void power(View v){
         v.setBackground(null);v.setBackgroundTintList(null);
         v.setStateListAnimator(null);v.setElevation(0);v.setOutlineProvider(null);v.setClipToOutline(false);
-        if(v instanceof TextView)((TextView)v).setTextColor(TEXT);
+        if(v instanceof TextView){
+            TextView text=(TextView)v;
+            text.setTextColor(TEXT);
+            if(v.getId()==android.R.id.message){
+                text.setSingleLine(false);text.setMaxLines(2);text.setEllipsize(null);
+                text.setGravity(android.view.Gravity.CENTER);text.setTextSize(14);
+                text.setPadding(dp(v,4),0,dp(v,4),0);
+                ViewGroup.LayoutParams params=text.getLayoutParams();
+                if(params!=null){params.width=ViewGroup.LayoutParams.MATCH_PARENT;params.height=ViewGroup.LayoutParams.WRAP_CONTENT;text.setLayoutParams(params);}
+            }
+        }
         if(v instanceof ImageView){((ImageView)v).setImageTintList(ColorStateList.valueOf(TEXT));v.setBackground(null);}
         if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++)power(g.getChildAt(i));}
+    }
+    private static View launchableGroup(View v,Class<?> type){
+        if(v instanceof ViewGroup && type.isInstance(v))return v;
+        if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=0;i<g.getChildCount();i++){View found=launchableGroup(g.getChildAt(i),type);if(found!=null)return found;}}
+        return null;
     }
     static void install(ClassLoader loader){
         Class<?> qsEx=XposedHelpers.findClass("com.nothing.systemui.qs.QSImplEx",loader);
@@ -130,6 +145,10 @@ final class ClassicControls {
             @Override protected void afterHookedMethod(MethodHookParam h){
                 android.app.Dialog d=(android.app.Dialog)h.thisObject;
                 power(d.getWindow().getDecorView());
+                // The launch animator requires a background-bearing ViewGroup.
+                // A transparent drawable satisfies it without restoring a visible panel.
+                View container=launchableGroup(d.getWindow().getDecorView(),XposedHelpers.findClass("com.android.systemui.animation.LaunchableView",loader));
+                if(container!=null)container.setBackground(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
             }
         });
         Class<?> mirror=XposedHelpers.findClass("com.android.systemui.statusbar.policy.BrightnessMirrorController",loader);
