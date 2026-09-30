@@ -7,6 +7,27 @@ import de.robv.android.xposed.*;
 final class ClassicNotifications {
     private static int blurRadius=160;
     private static long blurReadAt;
+    private static int notificationTransparency, notificationBlur;
+    private static android.graphics.Bitmap wallpaperBitmap;
+    private static android.graphics.RenderNode notificationBackdrop;
+    private static int recordedWidth,recordedHeight,recordedRadius=-1;
+    private static void drawNotificationBackdrop(View view,android.graphics.Canvas canvas){
+        if(notificationBlur==0 || wallpaperBitmap==null || !canvas.isHardwareAccelerated())return;
+        View root=view.getRootView();int width=root.getWidth(),height=root.getHeight();
+        if(width<=0 || height<=0)return;
+        int radius=Math.max(1,Math.round(80*(notificationBlur/100f)*(notificationBlur/100f)));
+        if(notificationBackdrop==null || width!=recordedWidth || height!=recordedHeight || radius!=recordedRadius){
+            notificationBackdrop=new android.graphics.RenderNode("ClassicNotificationBackdrop");notificationBackdrop.setPosition(0,0,width,height);
+            android.graphics.RecordingCanvas recording=notificationBackdrop.beginRecording(width,height);
+            float scale=Math.max(width/(float)wallpaperBitmap.getWidth(),height/(float)wallpaperBitmap.getHeight());
+            float w=wallpaperBitmap.getWidth()*scale,h=wallpaperBitmap.getHeight()*scale;
+            recording.drawBitmap(wallpaperBitmap,null,new android.graphics.RectF((width-w)/2,(height-h)/2,(width+w)/2,(height+h)/2),new android.graphics.Paint(3));
+            notificationBackdrop.endRecording();notificationBackdrop.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(radius,radius,android.graphics.Shader.TileMode.CLAMP));
+            recordedWidth=width;recordedHeight=height;recordedRadius=radius;
+        }
+        int[] location=new int[2],origin=new int[2];view.getLocationInWindow(location);root.getLocationInWindow(origin);
+        canvas.save();canvas.clipRect(0,0,view.getWidth(),view.getHeight());canvas.translate(origin[0]-location[0],origin[1]-location[1]);canvas.drawRenderNode(notificationBackdrop);canvas.restore();
+    }
     private static boolean shadeWasVisible;
     // Keep the saved slider range, but give low strengths much finer control.
     private static int effectRadius(int strength){
@@ -41,12 +62,31 @@ final class ClassicNotifications {
         XposedBridge.hookAllMethods(section,"onDraw",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){flatten(((View)h.thisObject).getBackground());}
         });
+        XposedHelpers.findAndHookMethod(View.class,"draw",android.graphics.Canvas.class,new XC_MethodHook(){
+            @Override protected void beforeHookedMethod(MethodHookParam h){
+                if(!section.isInstance(h.thisObject))return;
+                View v=(View)h.thisObject;android.graphics.drawable.Drawable d=v.getBackground();
+                if(d!=null){h.setObjectExtra("sectionAlpha",d.getAlpha());d.setAlpha(Math.round(d.getAlpha()*(1-notificationTransparency/100f)));}
+                drawNotificationBackdrop(v,(android.graphics.Canvas)h.args[0]);
+            }
+            @Override protected void afterHookedMethod(MethodHookParam h){
+                if(!section.isInstance(h.thisObject))return;
+                Object alpha=h.getObjectExtra("sectionAlpha");android.graphics.drawable.Drawable d=((View)h.thisObject).getBackground();if(alpha!=null && d!=null)d.setAlpha((Integer)alpha);
+            }
+        });
         Class<?> background=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.NotificationBackgroundView",loader);
         XposedBridge.hookAllMethods(background,"setCustomBackground",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground"));}
         });
         XposedBridge.hookAllMethods(background,"onDraw",new XC_MethodHook(){
-            @Override protected void beforeHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground"));}
+            @Override protected void beforeHookedMethod(MethodHookParam h){
+                android.graphics.drawable.Drawable d=(android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground");flatten(d);
+                if(d!=null){h.setObjectExtra("originalAlpha",d.getAlpha());d.setAlpha(Math.round(d.getAlpha()*(1-notificationTransparency/100f)));}
+                drawNotificationBackdrop((View)h.thisObject,(android.graphics.Canvas)h.args[0]);
+            }
+            @Override protected void afterHookedMethod(MethodHookParam h){
+                Object alpha=h.getObjectExtra("originalAlpha");android.graphics.drawable.Drawable d=(android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground");if(alpha!=null && d!=null)d.setAlpha((Integer)alpha);
+            }
         });
         XposedBridge.hookAllMethods(background,"setRadius",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;h.args[1]=0f;}
@@ -78,7 +118,10 @@ final class ClassicNotifications {
                 if(visible && android.os.SystemClock.uptimeMillis()-blurReadAt>1000){
                     blurReadAt=android.os.SystemClock.uptimeMillis();
                     try(android.database.Cursor c=root.getContext().getContentResolver().query(android.net.Uri.parse("content://dev.lain.classicui.settings/blur"),null,null,null,null)){
-                        if(c!=null && c.moveToFirst())blurRadius=Math.max(0,Math.min(400,c.getInt(0)));
+                        if(c!=null && c.moveToFirst()){
+                            blurRadius=Math.max(0,Math.min(400,c.getInt(0)));
+                            notificationTransparency=Math.max(0,Math.min(100,c.getInt(1)));notificationBlur=Math.max(0,Math.min(100,c.getInt(2)));
+                        }
                     }catch(Exception ignored){}
                 }
                 int radiusValue=effectRadius(blurRadius);
@@ -94,6 +137,7 @@ final class ClassicNotifications {
                         if(drawable instanceof android.graphics.drawable.BitmapDrawable){
                             android.graphics.Bitmap original=((android.graphics.drawable.BitmapDrawable)drawable).getBitmap();
                             drawable=new android.graphics.drawable.BitmapDrawable(root.getResources(),original.copy(android.graphics.Bitmap.Config.ARGB_8888,false));
+                            wallpaperBitmap=((android.graphics.drawable.BitmapDrawable)drawable).getBitmap();notificationBackdrop=null;
                         }
                         if(drawable!=null){
                             if(backdrop==null){

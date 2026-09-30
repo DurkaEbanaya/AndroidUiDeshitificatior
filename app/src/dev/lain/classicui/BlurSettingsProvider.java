@@ -10,8 +10,9 @@ import android.net.Uri;
 public final class BlurSettingsProvider extends ContentProvider {
     public boolean onCreate(){return true;}
     public Cursor query(Uri uri,String[] projection,String selection,String[] args,String order){
-        MatrixCursor result=new MatrixCursor(new String[]{"blur"});
-        result.addRow(new Object[]{getContext().getSharedPreferences("ui",0).getInt("blur",160)});return result;
+        MatrixCursor result=new MatrixCursor(new String[]{"blur","notification_transparency","notification_blur"});
+        android.content.SharedPreferences prefs=getContext().getSharedPreferences("ui",0);
+        result.addRow(new Object[]{prefs.getInt("blur",160),prefs.getInt("notification_transparency",0),prefs.getInt("notification_blur",0)});return result;
     }
     public String getType(Uri uri){return "vnd.android.cursor.item/vnd.classicui.blur";}
     public Uri insert(Uri uri,ContentValues values){throw new UnsupportedOperationException();}

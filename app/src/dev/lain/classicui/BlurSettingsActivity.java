@@ -25,6 +25,18 @@ public final class BlurSettingsActivity extends Activity {
             public void onStopTrackingTouch(SeekBar s){}
         });
         TextView help=new TextView(this);help.setText("0 — без размытия. После изменения закрой и снова открой шторку. Настройка сохраняется.");layout.addView(help);
+        addSlider(layout,"Прозрачность подложек уведомлений","notification_transparency",0,pad);
+        addSlider(layout,"Размытие под уведомлениями","notification_blur",0,pad);
         setContentView(layout);
+    }
+    private void addSlider(LinearLayout layout,String label,String key,int fallback,int pad){
+        TextView title=new TextView(this);title.setText(label);title.setTextSize(20);layout.addView(title);
+        TextView value=new TextView(this);layout.addView(value);
+        SeekBar slider=new SeekBar(this);slider.setMax(100);slider.setProgress(getSharedPreferences("ui",0).getInt(key,fallback));
+        value.setText(slider.getProgress()+" %");layout.addView(slider,new LinearLayout.LayoutParams(-1,pad*3));
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar s,int progress,boolean user){value.setText(progress+" %");if(user)getSharedPreferences("ui",0).edit().putInt(key,progress).apply();}
+            public void onStartTrackingTouch(SeekBar s){} public void onStopTrackingTouch(SeekBar s){}
+        });
     }
 }

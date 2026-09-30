@@ -32,6 +32,9 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Version 0.4.7: blur strength is displayed as 0–100%, mapped quadratically
   to 0–80 px for finer low-strength control. The wallpaper ID is checked
   on shade opening; a changed wallpaper refreshes the copied backdrop.
+- Version 0.5: separate notification-background transparency and local wallpaper
+  blur sliders on the same settings screen. Text and icons are not faded or
+  blurred. Local blur uses the static wallpaper fallback, not live app content.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
