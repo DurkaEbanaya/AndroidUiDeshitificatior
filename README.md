@@ -128,6 +128,16 @@ No system APK modifications. Source APKs and captured UI evidence are in `resear
 
 ## Build / apply
 
+### 0.7.2 shade backing animation
+
+The QS backing now interpolates between the quick brightness boundary and the
+expanded panel's actual brightness boundary. It no longer interpolates to the
+fullscreen `QSContainerImpl` height, which produced an expanding empty surface
+under the controls on the second swipe. Native content translations are not
+applied a second time to that endpoint. Drawable alpha/filter updates are also
+honoured. Device checks covered both swipe directions, reopening the shade,
+light/dark theme switching and the unchanged lockscreen clock bounds.
+
 `sh tools/build.sh` uses Android build-tools 35, platform 36, JDK 17 and
 Xposed API 82 from `/tmp/opencode/classic-tools`.
 Override `TOOLS` and `JDK` to use another tool directory. This is the initial

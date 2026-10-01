@@ -205,16 +205,35 @@ public final class ClassicUi implements IXposedHookLoadPackage {
     }
     private static final class PanelSurface extends Drawable {
         final View view;int color;final android.graphics.Paint paint=new android.graphics.Paint();
+        int alpha=255;android.graphics.ColorFilter filter;
         PanelSurface(View view){this.view=view;}
+        private int expandedContentBottom(){
+            ViewGroup panel=(ViewGroup)XposedHelpers.getObjectField(view,"mQSPanel");
+            if(panel==null)return dp(view,313);
+            int id=view.getResources().getIdentifier("brightness_slider","id","com.android.systemui");
+            View brightness=panel.findViewById(id);
+            if(brightness==null || brightness.getHeight()==0)return dp(view,313);
+            // Use the final content layout, not the fullscreen container bounds.
+            // Native translation/scroll animations already move the QS contents;
+            // applying them to the endpoint would animate the backing twice.
+            int bottom=brightness.getHeight()+dp(view,4);
+            for(View node=brightness;node!=view;){
+                bottom+=node.getTop();
+                if(!(node.getParent() instanceof View))return dp(view,313);
+                node=(View)node.getParent();
+            }
+            return bottom;
+        }
         public void draw(android.graphics.Canvas canvas){
             if(color==0)return;
             float expansion=XposedHelpers.getFloatField(view,"mQsExpansion");
             int height=getBounds().height(),base=Math.min(height,dp(view,313));
-            paint.setColor(color);
-            canvas.drawRect(getBounds().left,getBounds().top,getBounds().right,getBounds().top+base+(height-base)*Math.max(0,Math.min(1,expansion)),paint);
+            int expanded=Math.max(base,Math.min(height,expandedContentBottom()));
+            paint.setColor(color);paint.setAlpha(Math.round(android.graphics.Color.alpha(color)*alpha/255f));paint.setColorFilter(filter);
+            canvas.drawRect(getBounds().left,getBounds().top,getBounds().right,getBounds().top+base+(expanded-base)*Math.max(0,Math.min(1,expansion)),paint);
         }
-        public void setAlpha(int alpha){}
-        public void setColorFilter(android.graphics.ColorFilter filter){}
+        public void setAlpha(int value){if(alpha!=value){alpha=value;invalidateSelf();}}
+        public void setColorFilter(android.graphics.ColorFilter value){filter=value;invalidateSelf();}
         public int getOpacity(){return android.graphics.PixelFormat.TRANSLUCENT;}
     }
     private static void collapse(View v) {
