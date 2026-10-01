@@ -25,6 +25,11 @@ final class ClassicLockscreen {
         return Math.max(dp(c,160),Math.min(Math.round(height*.60f),height-dp(c,340)));
     }
     private static int dp(Context c,float value){return Math.round(value*c.getResources().getDisplayMetrics().density);}
+    private static int notificationTop(Context c){
+        int statusBar=c.getResources().getIdentifier("status_bar_height","dimen","android");
+        int inset=statusBar==0?dp(c,48):c.getResources().getDimensionPixelSize(statusBar);
+        return inset+dp(c,16);
+    }
     private static int id(Context c,String name){return c.getResources().getIdentifier(name,"id","com.android.systemui");}
     private static View find(View v,String name){return v.findViewById(id(v.getContext(),name));}
     private static void text(TextView v,float size,int color){
@@ -131,7 +136,7 @@ final class ClassicLockscreen {
                 XposedHelpers.callMethod(set,"setVisibility",id(c,"keyguard_slice_view"),View.GONE);
                 XposedHelpers.callMethod(set,"constrainHeight",id(c,"keyguard_slice_view"),0);
                 Object interactor=XposedHelpers.getObjectField(h.thisObject,"clockInteractor");
-                XposedHelpers.callMethod(interactor,"setNotificationStackDefaultTop",dp(c,110));
+                XposedHelpers.callMethod(interactor,"setNotificationStackDefaultTop",notificationTop(c));
             }
         });
         Class<?> notifications=XposedHelpers.findClass("com.android.systemui.keyguard.ui.view.layout.sections.DefaultNotificationStackScrollLayoutSection",loader);
@@ -140,7 +145,7 @@ final class ClassicLockscreen {
                 if(!classicFaceActive)return;
                 Context c=(Context)XposedHelpers.callMethod(h.thisObject,"getContext");
                 Object set=h.args[0];
-                XposedHelpers.callMethod(set,"connect",id(c,"nssl_placeholder"),3,0,3,dp(c,110));
+                XposedHelpers.callMethod(set,"connect",id(c,"nssl_placeholder"),3,0,3,notificationTop(c));
                 XposedHelpers.callMethod(set,"create",NOTIFICATION_BOTTOM,0);
                 XposedHelpers.callMethod(set,"setGuidelineBegin",NOTIFICATION_BOTTOM,clockTop(c)-dp(c,16));
                 XposedHelpers.callMethod(set,"connect",id(c,"nssl_placeholder"),4,NOTIFICATION_BOTTOM,3);
