@@ -101,6 +101,31 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 Installed prerequisites: NeoZygisk 2.4 (289), Vector 2.2 (3080).
 No system APK modifications. Source APKs and captured UI evidence are in `research/`.
 
+### 0.7 native Windows Phone-style lockscreen
+
+- Styles the built-in Nothing **General** clock face (`GENERAL`). Select that
+  face in the native lockscreen editor; other clock styles retain their own
+  rendering. The development phone already had General selected.
+- Reuses the face's existing TextViews for thin, left-aligned time, weekday,
+  and full month/day on separate lines. No new window, background service,
+  independent timer, wallpaper replacement, or replacement unlock screen.
+- Native clock events continue to supply minute updates, locale, timezone,
+  12/24-hour mode, wallpaper contrast, wakefulness and doze colours.
+- Keyguard's ConstraintSet positions the clock block in the lower part of the
+  portrait screen and reserves a separate notification area above it. The
+  native fingerprint entry, PIN screen and AOD burn-in controller remain in
+  charge. The duplicate top date slice is hidden for this clock face.
+- General's weather/calendar fields are used as the date block for this style.
+  Other native clock faces can still be selected for their original content.
+- Confirmed on the development phone: native clock bounds `[0,1435][1080,1934]`,
+  separate localized weekday/date text, notification above the clock, dozing
+  state, wake-up, theme round-trip and swipe dismissal back to the foreground
+  app. A PIN challenge was not exercised; AOD entered dozing but its captured
+  image was black, so visible always-on rendering still needs device-side
+  confirmation. Full shade styling/layout code was not changed for this release.
+- Typeface uses Android's built-in `sans-serif-light`, rather than bundling
+  Microsoft's Segoe UI. This is a native adaptation, not a pixel-identical port.
+
 ## Build / apply
 
 `sh tools/build.sh` uses Android build-tools 35, platform 36, JDK 17 and

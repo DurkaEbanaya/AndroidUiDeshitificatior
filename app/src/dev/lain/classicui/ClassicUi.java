@@ -118,6 +118,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             ClassicMedia.install(p.classLoader);
             ClassicNotifications.install(p.classLoader);
             ClassicStatusBar.install(p.classLoader);
+            ClassicLockscreen.install(p.classLoader);
             XposedBridge.hookAllMethods(XposedHelpers.findClass("com.nothing.systemui.qs.QSPanelControllerBaseEx",p.classLoader),"createTileView",new XC_MethodHook(){
                 @Override protected void beforeHookedMethod(MethodHookParam h){
                     String spec=(String)h.args[3];
