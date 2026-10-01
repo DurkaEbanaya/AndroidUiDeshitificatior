@@ -138,6 +138,14 @@ applied a second time to that endpoint. Drawable alpha/filter updates are also
 honoured. Device checks covered both swipe directions, reopening the shade,
 light/dark theme switching and the unchanged lockscreen clock bounds.
 
+### 0.7.3 remove the separate QS backing
+
+Removed `PanelSurface` entirely at the user's request. The QS container now
+has no background drawable in either expansion state; resource and theme
+refreshes clear any restored background. There is no custom rectangle or
+separate background-height animation. Shade wallpaper/blur, controls and
+notification backgrounds retain their existing implementations.
+
 `sh tools/build.sh` uses Android build-tools 35, platform 36, JDK 17 and
 Xposed API 82 from `/tmp/opencode/classic-tools`.
 Override `TOOLS` and `JDK` to use another tool directory. This is the initial
