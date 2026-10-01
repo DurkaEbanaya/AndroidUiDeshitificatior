@@ -36,7 +36,8 @@ final class ClassicNotifications {
     }
     private static void flatten(android.graphics.drawable.Drawable d){
         if(d instanceof android.graphics.drawable.GradientDrawable){
-            android.graphics.drawable.GradientDrawable g=(android.graphics.drawable.GradientDrawable)d.mutate();g.setCornerRadii(null);g.setCornerRadius(0);
+            android.graphics.drawable.GradientDrawable g=(android.graphics.drawable.GradientDrawable)d;
+            if(g.getCornerRadii()!=null || g.getCornerRadius()!=0){g=(android.graphics.drawable.GradientDrawable)g.mutate();g.setCornerRadii(null);g.setCornerRadius(0);}
         }
         if(d instanceof android.graphics.drawable.LayerDrawable){android.graphics.drawable.LayerDrawable l=(android.graphics.drawable.LayerDrawable)d;for(int i=0;i<l.getNumberOfLayers();i++)flatten(l.getDrawable(i));}
         if(d instanceof android.graphics.drawable.DrawableWrapper)flatten(((android.graphics.drawable.DrawableWrapper)d).getDrawable());
@@ -62,30 +63,50 @@ final class ClassicNotifications {
         XposedBridge.hookAllMethods(section,"onDraw",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){flatten(((View)h.thisObject).getBackground());}
         });
-        XposedHelpers.findAndHookMethod(View.class,"draw",android.graphics.Canvas.class,new XC_MethodHook(){
+        XposedHelpers.findAndHookMethod(View.class,"drawBackground",android.graphics.Canvas.class,new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){
                 if(!section.isInstance(h.thisObject))return;
-                View v=(View)h.thisObject;android.graphics.drawable.Drawable d=v.getBackground();
-                if(d!=null){h.setObjectExtra("sectionAlpha",d.getAlpha());d.setAlpha(Math.round(d.getAlpha()*(1-notificationTransparency/100f)));}
-                drawNotificationBackdrop(v,(android.graphics.Canvas)h.args[0]);
+                View v=(View)h.thisObject;android.graphics.Canvas canvas=(android.graphics.Canvas)h.args[0];
+                drawNotificationBackdrop(v,canvas);
+                if(notificationTransparency>0)h.setObjectExtra("sectionLayer",canvas.saveLayerAlpha(null,Math.round(255*(1-notificationTransparency/100f))));
             }
             @Override protected void afterHookedMethod(MethodHookParam h){
                 if(!section.isInstance(h.thisObject))return;
-                Object alpha=h.getObjectExtra("sectionAlpha");android.graphics.drawable.Drawable d=((View)h.thisObject).getBackground();if(alpha!=null && d!=null)d.setAlpha((Integer)alpha);
+                Object save=h.getObjectExtra("sectionLayer");if(save!=null)((android.graphics.Canvas)h.args[0]).restoreToCount((Integer)save);
             }
         });
         Class<?> background=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.NotificationBackgroundView",loader);
+        java.lang.reflect.Method actualHeight=XposedHelpers.findMethodExact(background,"getActualHeight");
+        java.lang.reflect.Method actualWidth=XposedHelpers.findMethodExact(background,"getActualWidth");
         XposedBridge.hookAllMethods(background,"setCustomBackground",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground"));}
         });
         XposedBridge.hookAllMethods(background,"onDraw",new XC_MethodHook(){
-            @Override protected void beforeHookedMethod(MethodHookParam h){
+            @Override protected void beforeHookedMethod(MethodHookParam h) throws Throwable{
                 android.graphics.drawable.Drawable d=(android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground");flatten(d);
-                if(d!=null){h.setObjectExtra("originalAlpha",d.getAlpha());d.setAlpha(Math.round(d.getAlpha()*(1-notificationTransparency/100f)));}
-                drawNotificationBackdrop((View)h.thisObject,(android.graphics.Canvas)h.args[0]);
+                View view=(View)h.thisObject;
+                android.graphics.Canvas canvas=(android.graphics.Canvas)h.args[0];
+                boolean expanding=XposedHelpers.getBooleanField(view,"mExpandAnimationRunning");
+                int height=(Integer)actualHeight.invoke(view);
+                int top=XposedHelpers.getIntField(view,"mClipTopAmount"),bottom=XposedHelpers.getIntField(view,"mClipBottomAmount");
+                // The measured view can exceed the visible/animated card. Respect
+                // the native background bounds instead of painting into neighbours.
+                if(d!=null && (expanding || top+bottom<height)){
+                    int width=(Integer)actualWidth.invoke(view);
+                    int left=expanding?(view.getWidth()-width)/2:(view.getLayoutDirection()==View.LAYOUT_DIRECTION_RTL?view.getWidth()-width:0);
+                    int save=canvas.save();
+                    canvas.clipRect(left,expanding?0:top,left+width-XposedHelpers.getIntField(view,"mEssentialPadding"),expanding?height:height-bottom);
+                    int fade=canvas.saveLayerAlpha(null,d.getAlpha());
+                    drawNotificationBackdrop(view,canvas);
+                    canvas.restoreToCount(fade);canvas.restoreToCount(save);
+                }
+                // Apply transparency to this background pass only; changing a
+                // callback-bearing Drawable's alpha while drawing invalidates it
+                // again on every frame, even after the animation has stopped.
+                if(notificationTransparency>0)h.setObjectExtra("backgroundLayer",canvas.saveLayerAlpha(null,Math.round(255*(1-notificationTransparency/100f))));
             }
             @Override protected void afterHookedMethod(MethodHookParam h){
-                Object alpha=h.getObjectExtra("originalAlpha");android.graphics.drawable.Drawable d=(android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"mBackground");if(alpha!=null && d!=null)d.setAlpha((Integer)alpha);
+                Object save=h.getObjectExtra("backgroundLayer");if(save!=null)((android.graphics.Canvas)h.args[0]).restoreToCount((Integer)save);
             }
         });
         XposedBridge.hookAllMethods(background,"setRadius",new XC_MethodHook(){

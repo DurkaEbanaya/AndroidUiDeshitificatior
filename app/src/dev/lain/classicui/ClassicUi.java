@@ -92,34 +92,7 @@ public final class ClassicUi implements IXposedHookLoadPackage {
             if(settingsHooked)return;
             Class<?> pref=XposedHelpers.findClass("androidx.preference.Preference",p.classLoader);
             settingsHooked=true;
-            XposedHelpers.findAndHookMethod(View.class,"draw",android.graphics.Canvas.class,new XC_MethodHook(){
-                @Override protected void beforeHookedMethod(MethodHookParam h){
-                    View v=(View)h.thisObject;
-                    String name="";try{name=v.getResources().getResourceEntryName(v.getId());}catch(Exception ignored){}
-                    if(name.equals("app_bar") || name.equals("app_bar_container")
-                            || name.equals("homepage_app_bar_regular_phone_view")
-                            || name.equals("homepage_app_bar_two_pane_view")){
-                        if(v.getBackground()!=null)v.setBackground(null);
-                        v.setElevation(0);
-                        v.setStateListAnimator(null);
-                    }
-                    if(name.equals("container_material") || name.equals("homepage_container")
-                            || name.equals("main_content") || v.getId()==android.R.id.content){
-                        if(v.getBackground()!=null)v.setBackground(null);
-                    }
-                    if(name.equals("recycler_view")){
-                        for(View node=v;node!=null;node=node.getParent() instanceof View?(View)node.getParent():null){
-                            if(node.getClass().getName().equals("com.android.internal.policy.DecorView"))break;
-                            if(node.getBackground()!=null)node.setBackground(null);
-                        }
-                    }
-                    if(Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(v,"classicPreferenceRow"))){
-                        // Vendor adapter decorates rows after preference binding.
-                        // Remove that replacement surface at the final drawing boundary.
-                        if(v.getBackground()!=null)v.setBackground(null);
-                    }
-                }
-            });
+            ClassicSettings.install(p.classLoader);
             XC_MethodHook bind = new XC_MethodHook() {
                 @Override protected void afterHookedMethod(MethodHookParam h) {
                     try { compact(holderView(h.args[0]),true);
@@ -132,8 +105,6 @@ public final class ClassicUi implements IXposedHookLoadPackage {
                 @Override protected void afterHookedMethod(MethodHookParam h){
                     android.app.Activity a=(android.app.Activity)h.thisObject;
                     View decor=a.getWindow().getDecorView();
-                    a.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
-                            ClassicTheme.dark(decor)?0xff000000:0xfffafafa));
                     decor.post(()->collapse(decor));
                 }
             });

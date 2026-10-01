@@ -38,6 +38,25 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
+### 0.6.11 regression fixes
+
+- Settings surfaces are adjusted in the Activity's pre-draw phase, not inside
+  `View.draw`. Dialog decors (including wireless-debug pairing codes) retain
+  their native opaque backgrounds and redraw behaviour.
+- Notification transparency uses a canvas layer around the background pass
+  only, without changing callback-bearing drawable alpha on every frame.
+  Section labels and notification contents retain their original opacity.
+- Local notification blur follows actual card width, height and animation
+  clipping, rather than painting across the entire measured background view.
+- On the development phone an unrelated `com.nt.diagswitch` window from user
+  10 intercepted Chrome toolbar taps at `[696,126][916,346]`. It was stopped
+  and disabled **only in that work profile**. This is a device repair, not an
+  APK hook or automatic package-disabling feature. Restore with
+  `adb shell pm enable --user 10 com.nt.diagswitch` if needed.
+- Device checks: Chrome tab switcher and overflow menu, repeated pairing-dialog
+  opening, shade expansion/collapse, and light → dark theme round-trip. No
+  new Vector hook exceptions were reported during the final checks.
+
 Installed prerequisites: NeoZygisk 2.4 (289), Vector 2.2 (3080).
 No system APK modifications. Source APKs and captured UI evidence are in `research/`.
 
