@@ -38,6 +38,20 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
+### 0.6.14 media surfaces and spacing
+
+- Flatten the lockscreen `MediaContainerView` clipping path too, including
+  after configuration changes. Reattach player styling when its host moves.
+- First-swipe QS backing ends at the brightness control (313 dp); it expands
+  with full QS rather than filling the area behind quick media.
+- Quick media removes unused footer padding and the duplicate brightness
+  height reserve. The gap before the first notification uses the native
+  `notification_divider_height` (2 dp on this firmware), not zero spacing.
+- Measured current session: brightness bottom 841 px, media 860–1343 px,
+  notification stack begins at 1348 px (5 px gap, previously 1556 px).
+- Checked lock/unlock, shade transitions and configuration changes; final
+  Vector log contained no hook exceptions.
+
 ### 0.6.13 media layout
 
 - Portrait quick-media host reserves measured space below the added brightness

@@ -197,7 +197,24 @@ public final class ClassicUi implements IXposedHookLoadPackage {
         Object qs=XposedHelpers.getAdditionalInstanceField(v,"classicQsOwner");
         boolean visible=qs!=null && XposedHelpers.getBooleanField(qs,"mQsVisible")
                 && XposedHelpers.getFloatField(qs,"mLastPanelFraction")>0;
-        v.setBackgroundColor(!visible || (keyguard!=null && keyguard.isKeyguardLocked())?0:ClassicTheme.panel(v));
+        int color=!visible || (keyguard!=null && keyguard.isKeyguardLocked())?0:ClassicTheme.panel(v);
+        PanelSurface surface=v.getBackground() instanceof PanelSurface?(PanelSurface)v.getBackground():new PanelSurface(v);
+        surface.color=color;surface.invalidateSelf();
+        if(v.getBackground()!=surface)v.setBackground(surface);
+    }
+    private static final class PanelSurface extends Drawable {
+        final View view;int color;final android.graphics.Paint paint=new android.graphics.Paint();
+        PanelSurface(View view){this.view=view;}
+        public void draw(android.graphics.Canvas canvas){
+            if(color==0)return;
+            float expansion=XposedHelpers.getFloatField(view,"mQsExpansion");
+            int height=getBounds().height(),base=Math.min(height,dp(view,313));
+            paint.setColor(color);
+            canvas.drawRect(getBounds().left,getBounds().top,getBounds().right,getBounds().top+base+(height-base)*Math.max(0,Math.min(1,expansion)),paint);
+        }
+        public void setAlpha(int alpha){}
+        public void setColorFilter(android.graphics.ColorFilter filter){}
+        public int getOpacity(){return android.graphics.PixelFormat.TRANSLUCENT;}
     }
     private static void collapse(View v) {
         if(v.getClass().getName().equals("com.google.android.material.appbar.AppBarLayout")) {

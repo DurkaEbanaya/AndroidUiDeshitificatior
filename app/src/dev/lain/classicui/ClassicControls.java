@@ -153,6 +153,7 @@ final class ClassicControls {
                 float expansion=XposedHelpers.getFloatField(h.thisObject,"mQsExpansion");
                 Object qs=XposedHelpers.getAdditionalInstanceField(h.thisObject,"classicQsOwner");
                 if(qs==null || !XposedHelpers.getBooleanField(qs,"mQsVisible")
+                        || ClassicMedia.hasQuickMedia(qs)
                         || XposedHelpers.getFloatField(qs,"mLastPanelFraction")<=0
                         || (Boolean)XposedHelpers.callMethod(qs,"isKeyguardState"))return;
                 h.setResult((Integer)h.getResult()+Math.round(dp((View)h.thisObject,55)*(1-expansion)));
@@ -170,6 +171,7 @@ final class ClassicControls {
         XposedBridge.hookAllMethods(qs,"getQsMinExpansionHeight",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
                 if(XposedHelpers.getBooleanField(h.thisObject,"mInSplitShade")
+                        || ClassicMedia.hasQuickMedia(h.thisObject)
                         || !XposedHelpers.getBooleanField(h.thisObject,"mQsVisible")
                         || XposedHelpers.getFloatField(h.thisObject,"mLastPanelFraction")<=0
                         || (Boolean)XposedHelpers.callMethod(h.thisObject,"isKeyguardState"))return;
