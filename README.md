@@ -38,6 +38,21 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
+### 0.6.12 heads-up fixes
+
+- QS background and quick brightness require a nonzero shade expansion, not
+  just `mQsVisible` (Nothing also sets that flag during a pinned heads-up).
+- The extra brightness height is reserved only with an unlocked, opening shade.
+- Wallpaper blur requires `shadeOrQsExpanded`; a notification-only window does
+  not gain a wallpaper backdrop or local wallpaper blur.
+- Preserve `RoundableState.maxRadius` for vendor normalisation; flatten the
+  final corner radii instead. Zeroing the denominator produced infinite
+  roundness requests and invalid clipping calculations.
+- Tested with a temporary high-importance notification with a reply action:
+  pinned card top 147 px (native status-bar inset), content/background height
+  314 px, finite roundness, light/dark themes and shade opening. The test app
+  was removed afterward; final Vector checks contained no hook exceptions.
+
 ### 0.6.11 regression fixes
 
 - Settings surfaces are adjusted in the Activity's pre-draw phase, not inside

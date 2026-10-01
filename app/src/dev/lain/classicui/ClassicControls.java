@@ -99,8 +99,12 @@ final class ClassicControls {
         float expansion=XposedHelpers.getFloatField(qs,"mLastQSExpansion");
         boolean keyguard=(Boolean)XposedHelpers.callMethod(qs,"isKeyguardState");
         View container=(View)XposedHelpers.getObjectField(qs,"mContainer");
-        if(container!=null)container.setBackgroundColor(keyguard?0:ClassicTheme.panel(container));
-        boolean visible=XposedHelpers.getBooleanField(qs,"mQsVisible")
+        boolean qsVisible=XposedHelpers.getBooleanField(qs,"mQsVisible");
+        if(container!=null){
+            XposedHelpers.setAdditionalInstanceField(container,"classicQsOwner",qs);
+            ClassicUi.applyPanelTheme(container);
+        }
+        boolean visible=qsVisible && XposedHelpers.getFloatField(qs,"mLastPanelFraction")>0
                 && !keyguard
                 && header!=null && header.getVisibility()==View.VISIBLE
                 && expansion>=0 && expansion<0.01f
@@ -114,6 +118,7 @@ final class ClassicControls {
             @Override protected void afterHookedMethod(MethodHookParam h){
                 try {
                     Object quickController=h.args[1], fullController=h.args[2];
+                    XposedHelpers.setAdditionalInstanceField(h.args[3],"classicQsOwner",XposedHelpers.callMethod(h.thisObject,"getQSImpl"));
                     ViewGroup quick=(ViewGroup)XposedHelpers.getObjectField(quickController,"mView");
                     if(XposedHelpers.getAdditionalInstanceField(quick,"classicBrightness")!=null)return;
                     Object factory=XposedHelpers.getObjectField(fullController,"mBrightnessSliderControllerFactory");
@@ -146,6 +151,10 @@ final class ClassicControls {
         for(String method:new String[]{"calculateContainerHeight","getQqsHeight","getSquishedQqsHeight"})XposedBridge.hookAllMethods(qsContainer,method,new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
                 float expansion=XposedHelpers.getFloatField(h.thisObject,"mQsExpansion");
+                Object qs=XposedHelpers.getAdditionalInstanceField(h.thisObject,"classicQsOwner");
+                if(qs==null || !XposedHelpers.getBooleanField(qs,"mQsVisible")
+                        || XposedHelpers.getFloatField(qs,"mLastPanelFraction")<=0
+                        || (Boolean)XposedHelpers.callMethod(qs,"isKeyguardState"))return;
                 h.setResult((Integer)h.getResult()+Math.round(dp((View)h.thisObject,55)*(1-expansion)));
             }
         });
@@ -160,7 +169,10 @@ final class ClassicControls {
             });
         XposedBridge.hookAllMethods(qs,"getQsMinExpansionHeight",new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){
-                if(XposedHelpers.getBooleanField(h.thisObject,"mInSplitShade"))return;
+                if(XposedHelpers.getBooleanField(h.thisObject,"mInSplitShade")
+                        || !XposedHelpers.getBooleanField(h.thisObject,"mQsVisible")
+                        || XposedHelpers.getFloatField(h.thisObject,"mLastPanelFraction")<=0
+                        || (Boolean)XposedHelpers.callMethod(h.thisObject,"isKeyguardState"))return;
                 View header=(View)XposedHelpers.getObjectField(h.thisObject,"mHeader");
                 h.setResult((Integer)h.getResult()+dp(header,55));
             }

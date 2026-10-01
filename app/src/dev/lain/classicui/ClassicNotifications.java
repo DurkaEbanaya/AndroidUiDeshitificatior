@@ -12,7 +12,7 @@ final class ClassicNotifications {
     private static android.graphics.RenderNode notificationBackdrop;
     private static int recordedWidth,recordedHeight,recordedRadius=-1;
     private static void drawNotificationBackdrop(View view,android.graphics.Canvas canvas){
-        if(notificationBlur==0 || wallpaperBitmap==null || !canvas.isHardwareAccelerated())return;
+        if(!shadeWasVisible || notificationBlur==0 || wallpaperBitmap==null || !canvas.isHardwareAccelerated())return;
         View root=view.getRootView();int width=root.getWidth(),height=root.getHeight();
         if(width<=0 || height<=0)return;
         int radius=Math.max(1,Math.round(80*(notificationBlur/100f)*(notificationBlur/100f)));
@@ -50,12 +50,15 @@ final class ClassicNotifications {
         // Header wrappers and grouped rows create their own RoundableState,
         // independently of ExpandableOutlineView.initDimens.
         Class<?> roundable=XposedHelpers.findClass("com.android.systemui.statusbar.notification.RoundableState",loader);
-        XposedBridge.hookAllConstructors(roundable,new XC_MethodHook(){
-            @Override protected void afterHookedMethod(MethodHookParam h){XposedHelpers.setFloatField(h.thisObject,"maxRadius",0f);}
-        });
-        XposedBridge.hookAllMethods(roundable,"setMaxRadius",new XC_MethodHook(){
-            @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;}
-        });
+        // Vendor code divides its requested radius by maxRadius. Zeroing that
+        // denominator produces Infinity roundness and NaN clipping paths.
+        // Keep its normalisation intact; flatten only the final pixel radii.
+        for(java.lang.reflect.Method method:roundable.getDeclaredMethods()){
+            if(method.getName().startsWith("getTopCornerRadius") || method.getName().startsWith("getBottomCornerRadius"))
+                XposedBridge.hookMethod(method,new XC_MethodHook(){
+                    @Override protected void beforeHookedMethod(MethodHookParam h){h.setResult(0f);}
+                });
+        }
         Class<?> section=XposedHelpers.findClass("com.nothing.systemui.statusbar.notification.stack.SectionHeaderViewWithBackground",loader);
         XposedBridge.hookAllConstructors(section,new XC_MethodHook(){
             @Override protected void afterHookedMethod(MethodHookParam h){flatten((android.graphics.drawable.Drawable)XposedHelpers.getObjectField(h.thisObject,"drawable"));}
@@ -112,12 +115,6 @@ final class ClassicNotifications {
         XposedBridge.hookAllMethods(background,"setRadius",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){h.args[0]=0f;h.args[1]=0f;}
         });
-        Class<?> outline=XposedHelpers.findClass("com.android.systemui.statusbar.notification.row.ExpandableOutlineView",loader);
-        XposedBridge.hookAllMethods(outline,"initDimens",new XC_MethodHook(){
-            @Override protected void afterHookedMethod(MethodHookParam h){
-                XposedHelpers.setFloatField(XposedHelpers.callMethod(h.thisObject,"getRoundableState"),"maxRadius",0f);
-            }
-        });
         Class<?> stack=XposedHelpers.findClass("com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout",loader);
         Class<?> algorithm=XposedHelpers.findClass("com.android.systemui.statusbar.notification.stack.StackScrollAlgorithm",loader);
         XposedBridge.hookAllMethods(algorithm,"getScrimTopPaddingOrZero",new XC_MethodHook(){
@@ -133,7 +130,7 @@ final class ClassicNotifications {
         XposedBridge.hookAllMethods(window,"applyWindowLayoutParams",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam h){
                 Object state=XposedHelpers.getObjectField(h.thisObject,"mCurrentState");
-                boolean visible=XposedHelpers.getBooleanField(state,"panelVisible") && !XposedHelpers.getBooleanField(state,"dozing");
+                boolean visible=XposedHelpers.getBooleanField(state,"shadeOrQsExpanded") && !XposedHelpers.getBooleanField(state,"dozing");
                 View root=(View)XposedHelpers.getObjectField(h.thisObject,"mWindowRootView");
                 if(root==null)return;
                 if(visible && android.os.SystemClock.uptimeMillis()-blurReadAt>1000){
@@ -205,7 +202,7 @@ final class ClassicNotifications {
                 View root=(View)XposedHelpers.getObjectField(h.thisObject,"mWindowRootView");
                 if(root==null)return;
                 Object state=XposedHelpers.getObjectField(h.thisObject,"mCurrentState");
-                boolean visible=XposedHelpers.getBooleanField(state,"panelVisible") && !XposedHelpers.getBooleanField(state,"dozing");
+                boolean visible=XposedHelpers.getBooleanField(state,"shadeOrQsExpanded") && !XposedHelpers.getBooleanField(state,"dozing");
                 Object viewRoot=XposedHelpers.callMethod(root,"getViewRootImpl");
                 if(viewRoot==null)return;
                 Object surface=XposedHelpers.callMethod(viewRoot,"getSurfaceControl");
@@ -223,7 +220,7 @@ final class ClassicNotifications {
             @Override protected void beforeHookedMethod(MethodHookParam h){
                 if(h.args[0]==null)return;
                 View v=(View)XposedHelpers.callMethod(h.args[0],"getView");
-                if(v!=null && v.getClass().getName().equals("com.android.systemui.shade.NotificationShadeWindowView") && v.getVisibility()==View.VISIBLE){h.args[1]=effectRadius(blurRadius);h.args[2]=false;}
+                if(v!=null && v.getClass().getName().equals("com.android.systemui.shade.NotificationShadeWindowView") && shadeWasVisible){h.args[1]=effectRadius(blurRadius);h.args[2]=false;}
             }
         });
         XposedBridge.hookAllMethods(stack,"updateSidePadding",new XC_MethodHook(){

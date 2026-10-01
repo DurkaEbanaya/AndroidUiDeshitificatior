@@ -193,7 +193,10 @@ public final class ClassicUi implements IXposedHookLoadPackage {
     }
     static void applyPanelTheme(View v){
         android.app.KeyguardManager keyguard=v.getContext().getSystemService(android.app.KeyguardManager.class);
-        v.setBackgroundColor(keyguard!=null && keyguard.isKeyguardLocked()?0:ClassicTheme.panel(v));
+        Object qs=XposedHelpers.getAdditionalInstanceField(v,"classicQsOwner");
+        boolean visible=qs!=null && XposedHelpers.getBooleanField(qs,"mQsVisible")
+                && XposedHelpers.getFloatField(qs,"mLastPanelFraction")>0;
+        v.setBackgroundColor(!visible || (keyguard!=null && keyguard.isKeyguardLocked())?0:ClassicTheme.panel(v));
     }
     private static void collapse(View v) {
         if(v.getClass().getName().equals("com.google.android.material.appbar.AppBarLayout")) {
