@@ -38,6 +38,18 @@ Visual reference: crDroid 7 / Android 11. Work in progress, not a finished port.
 - Fabricated resource overlays remove card/tile rounding and selected margins.
 - Host tools and extracted firmware are excluded from git.
 
+### 0.6.13 media layout
+
+- Portrait quick-media host reserves measured space below the added brightness
+  slider. Its height remains part of the native header measurement, placing
+  the first notification after the player instead of overlapping QS controls.
+- Player, artwork/effect outlines, button backgrounds and carousel clipping
+  use square corners; playback actions and artwork colours remain native.
+- Verified with the existing YouTube media session: quick brightness ends at
+  841 px, media occupies 860–1343 px, first notification starts at 1556 px.
+  Expanded QS transitions and light/dark switching produced no hook errors.
+  Placement remains tuned for this phone's portrait layout.
+
 ### 0.6.12 heads-up fixes
 
 - QS background and quick brightness require a nonzero shade expansion, not
